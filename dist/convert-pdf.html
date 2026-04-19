@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF 转图片工具</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+    .container {
+      background: white;
+      border-radius: 12px;
+      padding: 24px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #07c160;
+      text-align: center;
+    }
+    .progress {
+      text-align: center;
+      padding: 20px;
+    }
+    .progress-bar {
+      width: 100%;
+      height: 20px;
+      background: #f0f0f0;
+      border-radius: 10px;
+      overflow: hidden;
+      margin: 10px 0;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #07c160, #12c78a);
+      transition: width 0.3s;
+    }
+    .page-preview {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+    .page-card {
+      background: #f9f9f9;
+      border-radius: 8px;
+      padding: 8px;
+      text-align: center;
+    }
+    .page-card img {
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+    }
+    .page-card p {
+      margin: 8px 0 0;
+      font-size: 12px;
+      color: #666;
+    }
+    .btn {
+      display: inline-block;
+      padding: 10px 24px;
+      background: #07c160;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+      margin: 10px 5px;
+    }
+    .btn:disabled {
+      background: #ccc;
+      cursor: not-allowed;
+    }
+    .status {
+      text-align: center;
+      margin: 10px 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📖 思维模型 PDF 转图片</h1>
+    <div class="progress">
+      <p id="statusText">点击开始按钮转换 PDF</p>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progressBar" style="width: 0%"></div>
+      </div>
+      <button class="btn" id="startBtn" onclick="startConversion()">开始转换</button>
+      <button class="btn" id="downloadBtn" onclick="downloadAll()" disabled>打包下载</button>
+    </div>
+    <div class="page-preview" id="preview"></div>
+  </div>
+
+  <script type="module">
+    import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.mjs'
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js'
+
+    let pdf = null
+    let totalPages = 0
+    let convertedPages = []
+
+    window.startConversion = async function() {
+      const startBtn = document.getElementById('startBtn')
+      const statusText = document.getElementById('statusText')
+      const progressBar = document.getElementById('progressBar')
+      const preview = document.getElementById('preview')
+      const downloadBtn = document.getElementById('downloadBtn')
+
+      startBtn.disabled = true
+      preview.innerHTML = ''
+      convertedPages = []
+
+      try {
+        statusText.textContent = '正在加载 PDF 文件...'
+
+        const response = await fetch('./思维模型图解 108 个.pdf')
+        if (!response.ok) throw new Error('无法加载 PDF 文件')
+
+        const pdfData = await response.arrayBuffer()
+        pdf = await pdfjsLib.getDocument({ data: pdfData }).promise
+        totalPages = pdf.numPages
+
+        statusText.textContent = `PDF 共 ${totalPages} 页，开始转换...`
+
+        for (let i = 1; i <= totalPages; i++) {
+          statusText.textContent = `正在转换第 ${i} / ${totalPages} 页...`
+          progressBar.style.width = `${(i / totalPages) * 100}%`
+
+          const page = await pdf.getPage(i)
+          const scale = 1.5
+          const viewport = page.getViewport({ scale })
+
+          const canvas = document.createElement('canvas')
+          canvas.width = viewport.width
+          canvas.height = viewport.height
+          const ctx = canvas.getContext('2d')
+
+          await page.render({
+            canvasContext: ctx,
+            viewport: viewport
+          }).promise
+
+          // 转换为图片
+          const dataUrl = canvas.toDataURL('image/png')
+          convertedPages.push({ page: i, dataUrl })
+
+          // 显示预览
+          const card = document.createElement('div')
+          card.className = 'page-card'
+          card.innerHTML = `
+            <img src="${dataUrl}" alt="Page ${i}">
+            <p>第 ${i} 页</p>
+          `
+          preview.appendChild(card)
+
+          // 自动下载单页
+          const link = document.createElement('a')
+          link.href = dataUrl
+          link.download = `page-${String(i).padStart(3, '0')}.png`
+          document.body.appendChild(link)
+          // link.click()
+          // document.body.removeChild(link)
+        }
+
+        statusText.textContent = '✅ 转换完成！共 ' + totalPages + ' 页'
+        progressBar.style.width = '100%'
+        downloadBtn.disabled = false
+        startBtn.disabled = false
+      } catch (err) {
+        statusText.textContent = '❌ 错误：' + err.message
+        console.error(err)
+        startBtn.disabled = false
+      }
+    }
+
+    window.downloadAll = async function() {
+      // 使用 JSZip 打包
+      const JSZip = (await import('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js')).default
+      const zip = new JSZip()
+
+      convertedPages.forEach(({ page, dataUrl }) => {
+        const base64Data = dataUrl.split(',')[1]
+        zip.file(`page-${String(page).padStart(3, '0')}.png`, base64Data, { base64: true })
+      })
+
+      const blob = await zip.generateAsync({ type: 'blob' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = '思维模型 108 页.zip'
+      link.click()
+      URL.revokeObjectURL(url)
+    }
+  </script>
+</body>
+</html>

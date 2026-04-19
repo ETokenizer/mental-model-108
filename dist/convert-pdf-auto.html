@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PDF 转图片 - 自动下载</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .container {
+      background: white;
+      border-radius: 24px;
+      padding: 40px;
+      max-width: 700px;
+      width: 100%;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    h1 { color: #333; text-align: center; margin-bottom: 10px; font-size: 28px; }
+    .subtitle { text-align: center; color: #666; margin-bottom: 30px; }
+    .status { padding: 20px; background: #f8f9fa; border-radius: 12px; margin-bottom: 20px; }
+    .status-text { font-size: 16px; color: #333; margin-bottom: 15px; font-weight: 500; }
+    .progress-bar { width: 100%; height: 24px; background: #e9ecef; border-radius: 12px; overflow: hidden; }
+    .progress-fill { height: 100%; background: linear-gradient(90deg, #07c160, #12c78a); transition: width 0.3s ease; width: 0%; }
+    .info { font-size: 14px; color: #666; margin-top: 15px; }
+    .preview-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(100px, 1fr)); gap: 8px; margin-top: 20px; max-height: 200px; overflow-y: auto; background: #f8f9fa; padding: 10px; border-radius: 8px; }
+    .preview-item { background: white; border-radius: 4px; overflow: hidden; aspect-ratio: 1; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+    .preview-item img { width: 100%; height: 100%; object-fit: cover; }
+    .complete { display: none; text-align: center; padding: 20px; }
+    .complete.show { display: block; }
+    .complete-icon { font-size: 64px; margin-bottom: 15px; }
+    .btn { display: inline-block; padding: 14px 32px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 12px; font-size: 16px; cursor: pointer; margin: 5px; text-decoration: none; }
+    .btn-success { background: linear-gradient(135deg, #07c160 0%, #12c78a 100%); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>📖 思维模型 PDF 转图片</h1>
+    <p class="subtitle">自动将 108 页 PDF 转换为 PNG 图片并下载</p>
+    <div id="processing">
+      <div class="status">
+        <p class="status-text" id="statusText">正在初始化...</p>
+        <div class="progress-bar">
+          <div class="progress-fill" id="progressBar"></div>
+        </div>
+        <p class="info" id="infoText">请稍候，正在转换中...</p>
+      </div>
+      <div class="preview-grid" id="previewGrid"></div>
+    </div>
+    <div class="complete" id="completeSection">
+      <div class="complete-icon">✅</div>
+      <h2 style="margin-bottom: 15px;">转换完成!</h2>
+      <p style="color: #666; margin-bottom: 25px;">所有 108 张图片已打包下载</p>
+      <button class="btn btn-success" onclick="location.reload()">再转换一次</button>
+    </div>
+  </div>
+
+  <!-- Load JSZip from local -->
+  <script src="./jszip.min.js"></script>
+
+  <!-- Load pdf.js -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+
+  <script type="module">
+    const pdfjsLib = window['pdfjs-dist/build/pdf']
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.worker.min.js'
+
+    const statusText = document.getElementById('statusText')
+    const progressBar = document.getElementById('progressBar')
+    const infoText = document.getElementById('infoText')
+    const previewGrid = document.getElementById('previewGrid')
+    const completeSection = document.getElementById('completeSection')
+    const processing = document.getElementById('processing')
+
+    // JSZip is loaded globally
+    const zip = new JSZip()
+    const convertedPages = []
+
+    // PDF 文件名（URL 编码）：思维模型图解 108 个.pdf
+    const PDF_FILE = './%E6%80%9D%E7%BB%B4%E6%A8%A1%E5%9E%8B%E5%9B%BE%E8%A7%A3108%E4%B8%AA.pdf'
+
+    async function convertPdf() {
+      try {
+        statusText.textContent = '正在加载 PDF...'
+        infoText.textContent = '文件：思维模型图解 108 个.pdf'
+
+        // Test PDF exists
+        const testRes = await fetch(PDF_FILE, { method: 'HEAD' })
+        if (!testRes.ok) throw new Error('无法找到 PDF 文件')
+        const fileSize = testRes.headers.get('content-length')
+        console.log('PDF 文件大小:', fileSize, 'bytes')
+
+        statusText.textContent = 'PDF 加载成功，开始转换...'
+        const response = await fetch(PDF_FILE)
+        const pdfData = await response.arrayBuffer()
+        console.log('PDF 数据:', pdfData.byteLength, 'bytes')
+
+        const pdf = await pdfjsLib.getDocument({ data: pdfData }).promise
+        const totalPages = pdf.numPages
+        console.log('PDF 页数:', totalPages)
+
+        statusText.textContent = `PDF 共 ${totalPages} 页，开始转换...`
+        infoText.textContent = `正在处理第 1 / ${totalPages} 页...`
+
+        for (let i = 1; i <= totalPages; i++) {
+          const startTime = Date.now()
+          statusText.textContent = `正在转换第 ${i} / ${totalPages} 页`
+          infoText.textContent = `正在处理第 ${i} / ${totalPages} 页...`
+          progressBar.style.width = `${(i / totalPages) * 100}%`
+
+          const page = await pdf.getPage(i)
+          const scale = 2
+          const viewport = page.getViewport({ scale })
+
+          const canvas = document.createElement('canvas')
+          canvas.width = viewport.width
+          canvas.height = viewport.height
+          const ctx = canvas.getContext('2d')
+
+          await page.render({ canvasContext: ctx, viewport: viewport }).promise
+
+          const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'))
+          const fileName = `page-${String(i).padStart(3, '0')}.png`
+          zip.file(fileName, blob)
+          convertedPages.push({ page: i, blob })
+
+          if (i <= 20) {
+            const img = document.createElement('img')
+            img.src = URL.createObjectURL(blob)
+            const item = document.createElement('div')
+            item.className = 'preview-item'
+            item.appendChild(img)
+            previewGrid.appendChild(item)
+          }
+
+          console.log(`Page ${i} done in ${(Date.now() - startTime) / 1000}s`)
+        }
+
+        statusText.textContent = '✅ 转换完成！正在打包下载...'
+        infoText.textContent = '请稍候...'
+        progressBar.style.width = '100%'
+
+        const content = await zip.generateAsync({ type: 'blob' })
+        const url = URL.createObjectURL(content)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = '思维模型 108 页.zip'
+        link.click()
+        URL.revokeObjectURL(url)
+
+        setTimeout(() => {
+          processing.style.display = 'none'
+          completeSection.classList.add('show')
+        }, 1000)
+
+      } catch (err) {
+        console.error('Error:', err)
+        statusText.textContent = '❌ 错误：' + err.message
+        infoText.textContent = '请刷新页面重试，或按 F12 查看控制台'
+      }
+    }
+
+    convertPdf()
+  </script>
+</body>
+</html>

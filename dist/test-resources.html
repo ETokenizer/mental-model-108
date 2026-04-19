@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>资源测试</title>
+  <style>
+    body { font-family: monospace; padding: 20px; }
+    .ok { color: green; }
+    .error { color: red; }
+    div { margin: 10px 0; padding: 10px; background: #f0f0f0; }
+  </style>
+</head>
+<body>
+  <h1>资源加载测试</h1>
+  <div id="results"></div>
+
+  <script>
+    const results = document.getElementById('results')
+
+    async function testResource(name, url) {
+      const div = document.createElement('div')
+      div.textContent = `Testing ${name}...`
+      results.appendChild(div)
+
+      try {
+        const res = await fetch(url, { method: 'HEAD' })
+        if (res.ok) {
+          div.className = 'ok'
+          div.textContent = `✅ ${name}: OK (${res.headers.get('content-length')} bytes)`
+        } else {
+          div.className = 'error'
+          div.textContent = `❌ ${name}: ${res.status}`
+        }
+      } catch (e) {
+        div.className = 'error'
+        div.textContent = `❌ ${name}: ${e.message}`
+      }
+    }
+
+    // 测试所有资源
+    testResource('JSZip', './jszip.min.js')
+    testResource('PDF', './%E6%80%9D%E7%BB%B4%E6%A8%A1%E5%9E%8B%E5%9B%BE%E8%A7%A3108%E4%B8%AA.pdf')
+    testResource('pdf.js', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.mjs')
+    testResource('pdf.worker.js', 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js')
+  </script>
+</body>
+</html>

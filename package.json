@@ -1,0 +1,26 @@
+{
+  "name": "mental-model-app",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "108 个思维模型互动学习工具",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "html2canvas": "^1.4.1",
+    "pdfjs-dist": "^5.6.205",
+    "pinia": "^3.0.4",
+    "puppeteer": "^24.0.0",
+    "sharp": "^0.34.0",
+    "vant": "^4.9.24",
+    "vue": "^3.5.30",
+    "vue-router": "^5.0.4"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.5",
+    "vite": "^8.0.1"
+  }
+}

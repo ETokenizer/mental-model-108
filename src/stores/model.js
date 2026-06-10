@@ -62,7 +62,7 @@ export const useModelStore = defineStore('model', () => {
   // 加载思维模型数据
   async function loadModels() {
     try {
-      const response = await fetch('/mental_models.json')
+      const response = await fetch(`${import.meta.env.BASE_URL}mental_models.json`)
       const data = await response.json()
       models.value = data.models || []
       return true

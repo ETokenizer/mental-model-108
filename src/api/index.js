@@ -1,6 +1,8 @@
 // API 工具函数
+const BASE = import.meta.env.BASE_URL
+
 export async function fetchModels() {
-  const response = await fetch('/mental_models.json')
+  const response = await fetch(`${BASE}mental_models.json`)
   return response.json()
 }
 

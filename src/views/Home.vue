@@ -115,8 +115,9 @@ const modules = [
 ]
 
 // 获取 thumbnail 图片路径
+const BASE = import.meta.env.BASE_URL
 function getThumbnailPath(page) {
-  return `/thumbnails/thumb-${String(page).padStart(3, '0')}.png`
+  return `${BASE}thumbnails/thumb-${String(page).padStart(3, '0')}.png`
 }
 
 // 模块背景色

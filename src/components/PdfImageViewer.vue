@@ -110,7 +110,7 @@ function handleResize() {
 // 生成图片 URL
 function getImageUrl(pageNum) {
   const paddedNum = String(pageNum).padStart(3, '0')
-  return `/pages/page-${paddedNum}.png?t=${Date.now()}`
+  return `${import.meta.env.BASE_URL}pages/page-${paddedNum}.png?t=${Date.now()}`
 }
 
 function onImageLoad() {

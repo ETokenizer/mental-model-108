@@ -20,8 +20,8 @@
         v-for="mod in modules"
         :key="mod.value"
         class="module-chip"
-        :class="{ active: activeModule === mod.value }"
-        @click="activeModule = mod.value"
+        :class="{ active: store.activeModule === mod.value }"
+        @click="store.activeModule = mod.value"
       >
         <span class="chip-label">{{ mod.label }}</span>
         <span class="chip-count">{{ getCountByModule(mod.value) }}</span>
@@ -29,7 +29,7 @@
     </div>
 
     <!-- 进度统计 -->
-    <div class="stats-bar" v-if="activeModule === 'all'">
+    <div class="stats-bar" v-if="store.activeModule === 'all'">
       <div class="stat-item">
         <span class="stat-value">{{ store.completedCount }}</span>
         <span class="stat-label">已掌握</span>
@@ -103,7 +103,6 @@ const router = useRouter()
 const store = useModelStore()
 
 const searchQuery = ref('')
-const activeModule = ref('all')
 
 const modules = [
   { label: '全部', value: 'all' },
@@ -140,8 +139,8 @@ function getCountByModule(module) {
 }
 
 function getSectionTitle() {
-  if (activeModule.value === 'all') return '全部模型'
-  return activeModule.value.replace('模块', '')
+  if (store.activeModule === 'all') return '全部模型'
+  return store.activeModule.replace('模块', '')
 }
 
 const filteredModels = computed(() => {
@@ -152,8 +151,8 @@ const filteredModels = computed(() => {
       model.description.toLowerCase().includes(searchQuery.value.toLowerCase())
     )
   }
-  if (activeModule.value !== 'all') {
-    result = result.filter(model => model.module === activeModule.value)
+  if (store.activeModule !== 'all') {
+    result = result.filter(model => model.module === store.activeModule)
   }
   return result
 })

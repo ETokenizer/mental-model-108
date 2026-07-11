@@ -37,6 +37,7 @@ export const useModelStore = defineStore('model', () => {
   const learningProgress = ref({})
   const favorites = ref([])
   const viewHistory = ref([])
+  const activeModule = ref('all')
 
   // 监听数据变化，自动保存
   watch(learningProgress, saveToStorage, { deep: true })
@@ -187,6 +188,7 @@ export const useModelStore = defineStore('model', () => {
     addViewHistory,
     getViewHistory,
     clearViewHistory,
+    activeModule,
     completedCount,
     progressPercent
   }
